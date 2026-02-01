@@ -198,6 +198,13 @@ std::vector<int> ResourceMonitor::allocateGPUs(int ngpu,
     std::vector<int> allocated;
     
     if (!specific_gpus.empty()) {
+        // Check if any requested GPU is excluded
+        for (int gpu_id : specific_gpus) {
+            if (excluded_gpus_.count(gpu_id) > 0) {
+                return {};  // Requested GPU is excluded
+            }
+        }
+        
         // Verify specific GPUs are available
         for (int gpu_id : specific_gpus) {
             if (gpu_monitor_.isGPUBusy(gpu_id)) {
@@ -214,6 +221,11 @@ std::vector<int> ResourceMonitor::allocateGPUs(int ngpu,
     auto available = gpu_monitor_.getAvailableGPUs();
     
     for (int gpu_id : available) {
+        // Skip excluded GPUs
+        if (excluded_gpus_.count(gpu_id) > 0) {
+            continue;
+        }
+        
         if (static_cast<int>(allocated.size()) >= ngpu) {
             break;
         }
@@ -235,6 +247,13 @@ std::vector<int> ResourceMonitor::allocateCPUs(int ncpu, int affinity_group,
     std::vector<int> allocated;
     
     if (!specific_cpus.empty()) {
+        // Check if any requested CPU is excluded
+        for (int cpu_id : specific_cpus) {
+            if (excluded_cpus_.count(cpu_id) > 0) {
+                return {};  // Requested CPU is excluded
+            }
+        }
+        
         // Verify specific CPUs are available (with 3-second monitoring)
         for (int cpu_id : specific_cpus) {
             if (!cpu_monitor_.checkCPUAvailable(cpu_id)) {
@@ -249,6 +268,12 @@ std::vector<int> ResourceMonitor::allocateCPUs(int ncpu, int affinity_group,
     
     // Auto allocation: get candidates from affinity group
     auto candidates = cpu_monitor_.getAvailableCPUs(affinity_group);
+    
+    // Filter out excluded CPUs
+    candidates.erase(
+        std::remove_if(candidates.begin(), candidates.end(),
+                      [this](int cpu_id) { return excluded_cpus_.count(cpu_id) > 0; }),
+        candidates.end());
     
     if (static_cast<int>(candidates.size()) < ncpu) {
         return {};  // Not enough candidate CPUs
@@ -307,6 +332,28 @@ int ResourceMonitor::determineAffinityGroup(const std::vector<int>& gpus) const 
     }
     
     return has_group1 ? 1 : 2;
+}
+
+void ResourceMonitor::setExcludedCPUs(const std::vector<int>& cpus) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    excluded_cpus_.clear();
+    excluded_cpus_.insert(cpus.begin(), cpus.end());
+}
+
+void ResourceMonitor::setExcludedGPUs(const std::vector<int>& gpus) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    excluded_gpus_.clear();
+    excluded_gpus_.insert(gpus.begin(), gpus.end());
+}
+
+std::set<int> ResourceMonitor::getExcludedCPUs() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return excluded_cpus_;
+}
+
+std::set<int> ResourceMonitor::getExcludedGPUs() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return excluded_gpus_;
 }
 
 } // namespace myqueue

@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 
 namespace myqueue {
 
@@ -87,6 +88,16 @@ struct Config {
     /// Whether job log output is enabled (output to workdir/job.log)
     /// Set via --joblog argument on server
     bool enable_job_log = false;
+    
+    // ========== Resource Exclusion ==========
+    
+    /// CPUs to exclude from scheduling (manually disabled)
+    /// Set via --excpus argument on server
+    std::vector<int> excluded_cpus;
+    
+    /// GPUs to exclude from scheduling (manually disabled)
+    /// Set via --exgpus argument on server
+    std::vector<int> excluded_gpus;
     
     // ========== Methods ==========
     

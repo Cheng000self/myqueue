@@ -36,7 +36,7 @@
 namespace myqueue {
 
 // Version information
-const char* VERSION = "1.0.0";
+const char* VERSION = "1.0.1";
 const char* AUTHOR = "rcz";
 
 // ANSI color codes
@@ -57,7 +57,7 @@ namespace Color {
 void printVersion() {
     std::cout << "myqueue version " << VERSION << "\n"
               << "Author: " << AUTHOR << "\n"
-              << "A user-level GPU task queue system\n";
+              << "A user-level GPU task queue system. Applicable only to Zhejiang Normal University cluster GPU nodes. \n";
 }
 
 void printUsage(const char* program) {
@@ -80,6 +80,8 @@ void printUsage(const char* program) {
               << "  --joblog             Enable job log output to workdir (default: off)\n"
               << "  --gpumemory <MB>     GPU busy threshold (default: 2000MB)\n"
               << "  --cpuusage <percent> CPU idle threshold (default: 40%)\n"
+              << "  --excpus \"x,y,z\"     Exclude specific CPU cores from scheduling\n"
+              << "  --exgpus \"x,y,z\"     Exclude specific GPU devices from scheduling\n"
               << "  --foreground         Run in foreground (don't daemonize)\n"
               << "  --init               Initialize queue data before starting\n"
               << "\n"
@@ -103,6 +105,7 @@ void printUsage(const char* program) {
               << "Examples:\n"
               << "  " << program << " server --log ~/.myqueue/logs\n"
               << "  " << program << " server --init          # Start with clean queue\n"
+              << "  " << program << " server --excpus \"0,1,2,3\" --exgpus \"0,4\"\n"
               << "  " << program << " init                   # Reset queue data\n"
               << "  " << program << " sb job.sh --ncpu 4 --ngpu 2\n"
               << "  " << program << " sb job.sh -w /home/user/calc\n"
@@ -112,7 +115,7 @@ void printUsage(const char* program) {
               << "  " << program << " sq all                 # Show all tasks\n"
               << "  " << program << " info 5                 # Show task 5 details\n"
               << "  " << program << " log 5                  # Show task 5 log\n"
-              << "  " << program << " log 5 -n 50           # Show last 50 lines\n"
+              << "  " << program << " log 5 -n 50            # Show last 50 lines\n"
               << "  " << program << " del 5\n"
               << "  " << program << " del 1-10\n"
               << "  " << program << " del all                # Delete all tasks\n"
@@ -196,6 +199,24 @@ int handleServer(int argc, char* argv[]) {
     std::cout << "  Job log: " << (config.enable_job_log ? "enabled" : "disabled") << "\n";
     std::cout << "  GPU memory threshold: " << config.gpu_memory_threshold_mb << " MB\n";
     std::cout << "  CPU usage threshold: " << config.cpu_util_threshold << "%\n";
+    
+    // Display excluded resources
+    if (!config.excluded_cpus.empty()) {
+        std::cout << "  Excluded CPUs: ";
+        for (size_t i = 0; i < config.excluded_cpus.size(); ++i) {
+            if (i > 0) std::cout << ",";
+            std::cout << config.excluded_cpus[i];
+        }
+        std::cout << "\n";
+    }
+    if (!config.excluded_gpus.empty()) {
+        std::cout << "  Excluded GPUs: ";
+        for (size_t i = 0; i < config.excluded_gpus.size(); ++i) {
+            if (i > 0) std::cout << ",";
+            std::cout << config.excluded_gpus[i];
+        }
+        std::cout << "\n";
+    }
     
     Server server(config);
     

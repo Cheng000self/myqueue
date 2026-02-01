@@ -54,6 +54,15 @@ Server::Server(const Config& config)
     // Initialize components
     queue_ = std::make_unique<TaskQueue>(config_.data_dir);
     monitor_ = std::make_unique<ResourceMonitor>(config_);
+    
+    // Set excluded resources
+    if (!config_.excluded_cpus.empty()) {
+        monitor_->setExcludedCPUs(config_.excluded_cpus);
+    }
+    if (!config_.excluded_gpus.empty()) {
+        monitor_->setExcludedGPUs(config_.excluded_gpus);
+    }
+    
     executor_ = std::make_unique<Executor>(config_.log_dir, config_.enable_job_log);
     scheduler_ = std::make_unique<Scheduler>(
         *queue_, *monitor_, *executor_,
@@ -62,11 +71,30 @@ Server::Server(const Config& config)
     ipc_server_ = std::make_unique<IPCServer>(config_.socket_path);
     
     log("INFO", "Server initialized");
+    
+    // Build excluded resources string for logging
+    std::string excpus_str = "";
+    if (!config_.excluded_cpus.empty()) {
+        for (size_t i = 0; i < config_.excluded_cpus.size(); ++i) {
+            if (i > 0) excpus_str += ",";
+            excpus_str += std::to_string(config_.excluded_cpus[i]);
+        }
+    }
+    std::string exgpus_str = "";
+    if (!config_.excluded_gpus.empty()) {
+        for (size_t i = 0; i < config_.excluded_gpus.size(); ++i) {
+            if (i > 0) exgpus_str += ",";
+            exgpus_str += std::to_string(config_.excluded_gpus[i]);
+        }
+    }
+    
     log("DEBUG", "Config: socket_path=" + config_.socket_path + 
         ", data_dir=" + config_.data_dir + 
         ", log_dir=" + config_.log_dir +
         ", gpu_memory_threshold=" + std::to_string(config_.gpu_memory_threshold_mb) + "MB" +
-        ", cpu_util_threshold=" + std::to_string(config_.cpu_util_threshold) + "%");
+        ", cpu_util_threshold=" + std::to_string(config_.cpu_util_threshold) + "%" +
+        (excpus_str.empty() ? "" : ", excluded_cpus=" + excpus_str) +
+        (exgpus_str.empty() ? "" : ", excluded_gpus=" + exgpus_str));
 }
 
 Server::~Server() {

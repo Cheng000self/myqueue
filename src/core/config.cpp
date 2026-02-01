@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <pwd.h>
+#include <sstream>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -100,6 +101,21 @@ Config Config::fromArgs(int argc, char* argv[]) {
     // Initialize default paths first
     config.initDefaultPaths();
     
+    // Helper function to parse comma-separated integers
+    auto parseIntList = [](const std::string& str) -> std::vector<int> {
+        std::vector<int> result;
+        std::stringstream ss(str);
+        std::string item;
+        while (std::getline(ss, item, ',')) {
+            try {
+                result.push_back(std::stoi(item));
+            } catch (...) {
+                // Skip invalid entries
+            }
+        }
+        return result;
+    };
+    
     // Parse command-line arguments
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -121,6 +137,10 @@ Config Config::fromArgs(int argc, char* argv[]) {
             }
         } else if (arg == "--joblog") {
             config.enable_job_log = true;
+        } else if (arg == "--excpus" && i + 1 < argc) {
+            config.excluded_cpus = parseIntList(argv[++i]);
+        } else if (arg == "--exgpus" && i + 1 < argc) {
+            config.excluded_gpus = parseIntList(argv[++i]);
         }
         // Other arguments are ignored (handled by CLI)
     }
@@ -152,6 +172,10 @@ std::string Config::toJson() const {
     // Logging
     j["enable_logging"] = enable_logging;
     j["enable_job_log"] = enable_job_log;
+    
+    // Resource exclusion
+    j["excluded_cpus"] = excluded_cpus;
+    j["excluded_gpus"] = excluded_gpus;
     
     return j.dump(2);  // Pretty print with 2-space indent
 }
@@ -206,6 +230,14 @@ Config Config::fromJson(const std::string& json) {
         }
         if (j.contains("enable_job_log")) {
             config.enable_job_log = j["enable_job_log"].get<bool>();
+        }
+        
+        // Resource exclusion
+        if (j.contains("excluded_cpus")) {
+            config.excluded_cpus = j["excluded_cpus"].get<std::vector<int>>();
+        }
+        if (j.contains("excluded_gpus")) {
+            config.excluded_gpus = j["excluded_gpus"].get<std::vector<int>>();
         }
         
         return config;

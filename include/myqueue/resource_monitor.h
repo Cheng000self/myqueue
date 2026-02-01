@@ -265,6 +265,30 @@ public:
      */
     CPUMonitor& cpuMonitor() { return cpu_monitor_; }
 
+    /**
+     * @brief Set excluded CPUs (manually disabled)
+     * @param cpus List of CPU IDs to exclude
+     */
+    void setExcludedCPUs(const std::vector<int>& cpus);
+    
+    /**
+     * @brief Set excluded GPUs (manually disabled)
+     * @param gpus List of GPU IDs to exclude
+     */
+    void setExcludedGPUs(const std::vector<int>& gpus);
+    
+    /**
+     * @brief Get excluded CPUs
+     * @return Set of excluded CPU IDs
+     */
+    std::set<int> getExcludedCPUs() const;
+    
+    /**
+     * @brief Get excluded GPUs
+     * @return Set of excluded GPU IDs
+     */
+    std::set<int> getExcludedGPUs() const;
+
 private:
     /**
      * @brief Allocate GPUs for a task
@@ -306,6 +330,12 @@ private:
     
     /// Random number generator for CPU selection
     mutable std::mt19937 rng_;
+    
+    /// Excluded CPUs (manually disabled)
+    std::set<int> excluded_cpus_;
+    
+    /// Excluded GPUs (manually disabled)
+    std::set<int> excluded_gpus_;
     
     /// Mutex for thread safety
     mutable std::mutex mutex_;
